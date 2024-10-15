@@ -83,14 +83,14 @@ async def echo(interaction: discord.Interaction, to_echo: str):
     """ Echoes a message """ 
     await interaction.response.send_message(f"{to_echo}")
 
-@client.tree.command()
+""" @client.tree.command()
 async def join(interaction: discord.Interaction):
-    """ Joins the current voice channel"""
+    
     if(interaction.user.voice):
         await interaction.response.send_message(f"Joining....")
         client.current_voice_channel = await interaction.user.voice.channel.connect()
     else:
-        await interaction.response.send_message("You must be in a voice channel to use this command")
+        await interaction.response.send_message("You must be in a voice channel to use this command") """
 
 @client.tree.command()
 @app_commands.describe(
@@ -98,7 +98,12 @@ async def join(interaction: discord.Interaction):
 )
 async def play(interaction: discord.Interaction, url: str):
     """ plays a url """
-    await interaction.response.send_message(f"Attempting to play {url}")
+    if(interaction.user.voice):
+        await interaction.response.send_message(f"Joining....")
+        client.current_voice_channel = await interaction.user.voice.channel.connect()
+    else:
+        await interaction.response.send_message("You must be in a voice channel to use this command")
+    # await interaction.response.send_message(f"Attempting to play {url}")
     player = await YTDLSource.from_url(url, stream=True)
     guild = interaction.guild
     guild.voice_client.play(player, after=lambda e: print(f'Player error: {e}') if e else None)
