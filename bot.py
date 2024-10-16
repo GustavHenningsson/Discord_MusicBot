@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 import yt_dlp
 import asyncio
+from requests import get
 
 
 load_dotenv()
@@ -51,6 +52,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_variables), data=data)
     
+    
 class MyClient(discord.Client):
     def __init__(self, *, intents: discord.Intents):
         super().__init__(intents=intents)
@@ -64,6 +66,18 @@ class MyClient(discord.Client):
 
 intents = discord.Intents.default()
 client = MyClient(intents=intents)
+
+
+# Search for youtube video using keyword
+def search_yt(arg):
+    try:
+        get(arg)
+    except:
+        video = ytdl.extract_info(f"ytsearch:{arg}", download=False)['entries'][0]
+    else:
+        video = ytdl.extract_info(arg, download=False)
+    print (video)
+    return video
 
 
 @client.event
@@ -97,13 +111,15 @@ async def join(interaction: discord.Interaction):
     url="URL to play"
 )
 async def play(interaction: discord.Interaction, url: str):
-    """ plays a url """
+
     if(interaction.user.voice):
-        await interaction.response.send_message(f"Joining....")
-        client.current_voice_channel = await interaction.user.voice.channel.connect()
+        if(client.current_voice_channel):
+            await interaction.response.send_message(f"Attempting to play {url}")   
+        else:
+            await interaction.response.send_message(f"Joining and attempting to play {url}")
+            client.current_voice_channel = await interaction.user.voice.channel.connect()
     else:
         await interaction.response.send_message("You must be in a voice channel to use this command")
-    # await interaction.response.send_message(f"Attempting to play {url}")
     player = await YTDLSource.from_url(url, stream=True)
     guild = interaction.guild
     guild.voice_client.play(player, after=lambda e: print(f'Player error: {e}') if e else None)
@@ -141,6 +157,21 @@ async def stop(interaction: discord.Interaction):
         client.current_voice_channel = None
     else:
         await interaction.response.send_message("Not currently in a voice channel")
+
+@client.tree.command()
+async def search(interaction: discord.Interaction, arg:str):
+    if(interaction.user.voice):
+        if(client.current_voice_channel):
+            await interaction.response.send_message(f"Searching for {arg}")   
+        else:
+            await interaction.response.send_message(f"Joining and searching for {arg}")
+            client.current_voice_channel = await interaction.user.voice.channel.connect()
+    else:
+        await interaction.response.send_message("You must be in a voice channel to use this command")
+    video = search_yt(arg)
+    player = await YTDLSource.from_url(video['url'], stream=True)
+    guild = interaction.guild
+    guild.voice_client.play(player, after=lambda e: print(f'Player error: {e}') if e else None)
 
 
 client.run(os.environ['BOT_TOKEN'])
